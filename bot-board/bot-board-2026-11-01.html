@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security review - bot_board (2026-11-01)</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e;
+          --crit:#f85149; --high:#ff7b72; --med:#d29922; --low:#3fb950; --info:#58a6ff; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--text); font:14px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1080px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:24px; font-weight:600; }
+  .sub { color:var(--dim); margin:6px 0 24px; font-size:13px; }
+  .strip { display:flex; gap:12px; flex-wrap:wrap; margin:20px 0 28px; }
+  .chip { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 16px; font-size:13px; }
+  .chip b { font-size:20px; display:block; }
+  .chip.crit b{color:var(--crit)} .chip.high b{color:var(--high)} .chip.med b{color:var(--med)}
+  .chip.low b{color:var(--low)} .chip.info b{color:var(--info)} .chip.noise b{color:var(--dim)}
+  .bar { display:flex; gap:10px; margin:0 0 14px; flex-wrap:wrap; align-items:center; }
+  .bar input, .bar select { background:var(--panel); border:1px solid var(--border); color:var(--text);
+        border-radius:6px; padding:7px 10px; font-size:13px; }
+  .bar input { flex:1; min-width:180px; }
+  table { width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  th, td { padding:9px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:13px; vertical-align:top; }
+  th { color:var(--dim); font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; }
+  th:hover { color:var(--text); }
+  td.loc { font-family:ui-monospace,Consolas,monospace; font-size:12px; white-space:nowrap; }
+  .sev { font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.4px; }
+  .sev.crit{color:var(--crit)} .sev.high{color:var(--high)} .sev.med{color:var(--med)}
+  .sev.low{color:var(--low)} .sev.info{color:var(--info)} .sev.noise{color:var(--dim)}
+  details { background:var(--panel); border:1px solid var(--border); border-radius:8px; margin-bottom:10px; }
+  details.sev-sec summary { padding:12px 16px; cursor:pointer; font-weight:600; }
+  details.finding { margin:0 0 8px; border-left:3px solid var(--border); }
+  details.finding summary { padding:10px 14px; cursor:pointer; font-size:13px; }
+  details.finding .body { padding:0 14px 14px; color:var(--text); font-size:13px; }
+  .body h4 { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.5px; margin:10px 0 4px; }
+  .body pre { background:#0b0f14; border:1px solid var(--border); border-radius:6px; padding:10px;
+        font:12px/1.5 ui-monospace,Consolas,monospace; overflow-x:auto; white-space:pre-wrap; }
+  .body .fix { background:#0d2418; border:1px solid #2ea04344; border-radius:6px; padding:10px; margin-top:8px; position:relative; }
+  .copy { position:absolute; top:8px; right:8px; background:#21262d; border:1px solid var(--border); color:var(--text);
+        border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer; }
+  .copy:hover { border-color:var(--info); }
+  .cov { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px 20px; margin-top:28px; font-size:13px; }
+  .cov h3 { margin-bottom:8px; }
+  .cov li { margin:4px 0 4px 20px; }
+  .tag { font-size:11px; background:#21262d; border-radius:10px; padding:2px 8px; color:var(--dim); }
+  a { color:var(--info); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Security review - bot_board</h1>
+  <p class="sub">Repo: github.com/jalemieux/bot_board @ 2e88497 &middot; Reviewed 2026-11-01 &middot;
+     Method: semgrep 1.183 (config auto) + gitleaks 8.30 (332 commits) + pip-audit + manual code review &middot; ~11k LoC Python, FastAPI</p>
+
+  <div class="strip">
+    <div class="chip high"><b>1</b>high</div>
+    <div class="chip med"><b>1</b>medium</div>
+    <div class="chip low"><b>2</b>low</div>
+    <div class="chip info"><b>1</b>info</div>
+    <div class="chip noise"><b>44</b>triaged as noise</div>
+  </div>
+
+  <div class="bar">
+    <input id="q" placeholder="filter (file, rule, word)..." oninput="render()">
+    <select id="sev" onchange="render()">
+      <option value="">all severities</option><option>high</option><option>medium</option>
+      <option>low</option><option>info</option><option>noise</option>
+    </select>
+  </div>
+  <table><thead><tr>
+    <th onclick="sortBy('sev')">Severity</th><th onclick="sortBy('loc')">Location</th>
+    <th onclick="sortBy('what')">Finding</th><th onclick="sortBy('verdict')">Verdict / action</th>
+  </tr></thead><tbody id="rows"></tbody></table>
+
+  <h2 style="margin:30px 0 14px">Findings</h2>
+
+  <details class="sev-sec" open><summary><span class="sev high">HIGH</span> &middot; 1</summary>
+    <details class="finding" open><summary><b>Pillow 12.3.0 - 39 CVEs on the untrusted-image decode path</b> &middot; requirements.txt</summary>
+      <div class="body">
+        <p>The board decodes <b>base64 images posted by any registered agent</b> through PIL
+        (<code>app/images.py: decode()</code> - <code>Image.open</code> + <code>verify()</code> + <code>load()</code>).
+        Pillow 12.3.0 carries 39 disclosed vulnerabilities, all fixed in 13.0.0.</p>
+        <h4>Evidence (representative CVEs)</h4>
+        <pre>PYSEC-2026-4328  heap use-after-free in libtiff tag rejection
+PYSEC-2026-4327  out-of-bounds read in P;2L / P;4L raw decoders
+PYSEC-2026-4326  invalid storage dereference in rank-based filters
+PYSEC-2026-4343  unchecked 32-bit WMF/EMF dimensions (Windows)
+PYSEC-2026-4339  multi-frame loaders retain ImagingCore allocation</pre>
+        <h4>Why it matters here</h4>
+        <p>The app's own guard (raster-only formats, 10 MiB byte cap, 20 MP pixel cap, SVG rejected)
+        stops decompression bombs and active formats - it does <b>not</b> stop memory-safety bugs
+        inside the C decoders. Reachability: <code>POST /api/messages</code> with
+        <code>image_attachment</code>, and board registration is open by default
+        (see info finding). A malicious agent can crash the board process; several of the CVE
+        classes are memory-corruption primitives.</p>
+        <div class="fix"><button class="copy" onclick="cp(this)">copy</button>
+        <pre>requirements.txt:  Pillow==12.3.0 -> Pillow==13.0.0
+verify: python -c "import PIL; print(PIL.__version__)"</pre></div>
+      </div>
+    </details>
+  </details>
+
+  <details class="sev-sec" open><summary><span class="sev med">MEDIUM</span> &middot; 1</summary>
+    <details class="finding" open><summary><b>Starlette 0.41.3 - Host-header injection reaches request.base_url used in 7 places</b> &middot; requirements.txt (transitive via fastapi==0.115.6)</summary>
+      <div class="body">
+        <p>PYSEC-2026-161 / PYSEC-2026-248: unvalidated <code>Host</code> header flows into
+        <code>request.url</code> / <code>request.base_url</code>. bot_board uses
+        <code>request.base_url</code> at 7 call sites, the sensitive one being
+        <code>app/main.py:593</code> - <code>/agents.md</code>, the onboarding document that tells
+        every bot where the board lives:</p>
+        <pre>text = text.replace("http://127.0.0.1:8080", str(request.base_url).rstrip("/"))</pre>
+        <h4>Reachability &amp; honest impact</h4>
+        <p>The poisoned URL only lands in the attacker's own response, so direct impact is nil
+        for a bot that connects by its configured address. It becomes real behind a caching
+        proxy (a poisoned response served to everyone) or when a launcher fetches
+        <code>/agents.md</code> through an attacker-provided URL. Rated medium for impact
+        ceiling, not likelihood.</p>
+        <h4>Also in this version (not reachable here)</h4>
+        <p>Range-header quadratic DoS (PYSEC-2026-1942), StaticFiles Windows realpath
+        (PYSEC-2026-2281), HTTPEndpoint dispatch (PYSEC-2026-2280), multipart form DoS
+        (PYSEC-2026-1941/249) - no StaticFiles/FileResponse/HTTPEndpoint/form parsing in this
+        codebase.</p>
+        <div class="fix"><button class="copy" onclick="cp(this)">copy</button>
+        <pre>Upgrade FastAPI to a release pinning starlette >= 0.49.1 (covers host-header fix);
+ideally current fastapi (starlette 1.x).
+Defense in depth: serve behind a proxy that sets/overrides Host.</pre></div>
+      </div>
+    </details>
+  </details>
+
+  <details class="sev-sec"><summary><span class="sev low">LOW</span> &middot; 2 &middot; <span class="tag">click to expand</span></summary>
+    <details class="finding"><summary><b>Mutable GitHub Action tags</b> &middot; .github/workflows/tests.yml:13-14</summary>
+      <div class="body">
+        <p><code>actions/checkout@v4</code> and <code>actions/setup-python@v5</code> are mutable
+        tags - a repointed tag ships different code into CI. Low impact (test workflow, no
+        publish/secrets), trivial fix.</p>
+        <div class="fix"><button class="copy" onclick="cp(this)">copy</button>
+        <pre>Pin to commit SHAs, e.g.
+  - uses: actions/checkout@&lt;sha&gt;  # v4.x.y
+  - uses: actions/setup-python@&lt;sha&gt;  # v5.x.y</pre></div>
+      </div>
+    </details>
+    <details class="finding"><summary><b>Plaintext http:// links in docs</b> &middot; docs/index.html:229,248</summary>
+      <div class="body"><p>Documentation page links; upgrade to https. Cosmetic.</p></div>
+    </details>
+  </details>
+
+  <details class="sev-sec"><summary><span class="sev info">INFO</span> &middot; 1 &middot; <span class="tag">deployment caveat</span></summary>
+    <details class="finding"><summary><b>Open registration + unauthenticated reads are the defaults</b> &middot; POST /api/agents, optional_agent reads</summary>
+      <div class="body">
+        <p>By design (documented honestly in SECURITY.md): anyone who can reach the board can
+        register a token; reading needs none. Safe on loopback/tailnet, dangerous if published.
+        With open registration, every reachable-party finding above (Pillow decode) inherits a
+        lower bar.</p>
+        <div class="fix"><button class="copy" onclick="cp(this)">copy</button>
+        <pre>Whenever the board leaves 127.0.0.1:
+  BOT_BOARD_INVITE_CODE=&lt;code&gt; BOT_BOARD_PRIVATE_READS=true
++ TLS in front (board speaks plain HTTP)</pre></div>
+      </div>
+    </details>
+  </details>
+
+  <details class="sev-sec"><summary><span class="sev noise">NOISE</span> &middot; 44 findings triaged &middot; <span class="tag">why each class was dropped</span></summary>
+    <details class="finding"><summary><b>33x sqlalchemy-execute-raw-query + 4x formatted-sql-query</b> - not SQL injection</summary>
+      <div class="body"><p>Every dynamic query uses bound parameters (<code>?</code>/<code>?</code>).
+        The interpolated parts are (a) schema-migration DDL with literal column names from
+        hardcoded tuples, (b) whitelisted column names in UPDATEs
+        (<code>'name','topic','focus','refs','archived'</code> only), (c) <code>?,?,?</code>
+        placeholder strings, or (d) constant SELECT prefixes. No user text reaches SQL
+        structure. Class dismissed on code review.</p></div>
+    </details>
+    <details class="finding"><summary><b>4x dynamic-urllib</b> - not SSRF</summary>
+      <div class="body"><p><code>app/registry.py</code>: host hardcoded
+        <code>raw.githubusercontent.com</code>, path parts regex-constrained to a GitHub source.
+        <code>bin/keeper</code>, <code>bin/routines</code>: URL is the deployment-configured board
+        address. <code>client/board_client.py</code>: caller-supplied client library param.</p></div>
+    </details>
+    <details class="finding"><summary><b>2x sha1, 1x chmod 0o700, 1x gitleaks ghp_ token</b></summary>
+      <div class="body"><p>SHA-1 used for a conversation slug and a dismissal key - no
+        collision-resistance requirement. <code>chmod 0o700</code> is owner-only+execute, the
+        correct mode for a script that must run (the rule's 0o600 suggestion would break it).
+        The <code>ghp_</code> hit in <code>tests/test_keeper_creds.py</code> is a deliberately
+        fake token asserting secret scoping - a fixture, not a credential.</p></div>
+    </details>
+  </details>
+
+  <details class="sev-sec"><summary><span class="sev info">STRENGTHS</span> observed - worth noting in an honest review</summary>
+    <details class="finding"><summary><b>Governance gate on scheduled shell execution</b></summary>
+      <div class="body"><p><code>app/routines.py:_approval</code> - a bot can propose a routine
+        but enabling/testing requires <code>approved_by</code>: the id of a human-operator reply
+        in the routine's thread, posted <i>after</i> the current version. Any definition change
+        bumps version, resets to paused and NULLs the approval - a change can never inherit a
+        prior yes. Same "human gate + version invalidation" shape serious agent platforms use.</p></div>
+    </details>
+    <details class="finding"><summary><b>Attachment &amp; web hardening</b></summary>
+      <div class="body"><p>Raster-only images re-validated through PIL (decode+verify+load),
+        byte+pixel bounds, SVG refused. Downloads served with <code>nosniff</code>,
+        <code>CSP default-src 'none'; sandbox</code>, no-store. Consistent escaping server
+        (<code>html.escape</code>) and client (<code>esc()</code> before every innerHTML);
+        linkifier restricted to http/https on already-escaped text. Tokens stored as SHA-256;
+        invite code compared with <code>hmac.compare_digest</code>; page cookie
+        <code>SameSite=Strict</code>; subprocess argv lists throughout (no
+        <code>shell=True</code>), <code>shlex.quote</code> on remote-shell paths; security
+        headers refuse framing.</p></div>
+    </details>
+  </details>
+
+  <div class="cov">
+    <h3>Coverage</h3>
+    <ul>
+      <li><b>Ran:</b> semgrep 1.183.0 <code>--config auto</code> over app/, bin/, client/, scripts/, workflows (48 findings, all triaged); gitleaks 8.30.1 working tree + full history (332 commits, 1 hit); pip-audit against requirements.txt (53 advisories on 2 packages); manual review of auth/session flow, every dynamic SQL site, subprocess sites, SSRF candidates, XSS rendering paths, attachment handling, routine approval gate, file serving.</li>
+      <li><b>Not run / out of scope:</b> frontend JS dependency audit (no JS deps - vanilla); container image audit (Dockerfile not scanned with a dedicated tool); dynamic/fuzz testing (none - static review only); the 3rd-party harness CLIs the board launches (claude/codex/opencode) are outside this repo's boundary.</li>
+      <li><b>Caveat:</b> pip-audit reported advisories for the installed environment's starlette 0.41.3 (pulled by fastapi 0.115.6). Exact resolved versions depend on the deployment environment.</li>
+    </ul>
+  </div>
+</div>
+<script>
+const ROWS = [
+ {sev:'high',  loc:'requirements.txt',            what:'Pillow 12.3.0 - 39 CVEs on untrusted image decode path (uaf, OOB read)', verdict:'fix: Pillow==13.0.0'},
+ {sev:'medium',loc:'requirements.txt (starlette)',what:'Starlette 0.41.3 - Host-header injection reaches request.base_url (/agents.md + 6 more sites)', verdict:'fix: upgrade fastapi (starlette>=0.49.1); proxy-override Host'},
+ {sev:'low',   loc:'.github/workflows/tests.yml:13-14', what:'Mutable action tags checkout@v4 / setup-python@v5', verdict:'pin to commit SHA'},
+ {sev:'low',   loc:'docs/index.html:229,248',     what:'Plaintext http:// links', verdict:'upgrade to https'},
+ {sev:'info',  loc:'POST /api/agents',            what:'Open registration + unauthenticated reads are defaults', verdict:'by design; gate with INVITE_CODE + PRIVATE_READS when off-loopback'},
+ {sev:'noise', loc:'app/db.py, fleet.py, routines.py, workspaces.py, registry.py, status.py, progress.py', what:'37x raw/formatted SQL', verdict:'bound params + whitelisted columns - dismissed on review'},
+ {sev:'noise', loc:'registry.py:345, keeper:969, routines:107, board_client.py:78', what:'4x dynamic urllib', verdict:'hardcoded/config/caller-supplied hosts - not SSRF'},
+ {sev:'noise', loc:'db.py:482, status.py:38',     what:'2x SHA-1', verdict:'non-crypto identifiers'},
+ {sev:'noise', loc:'bin/routines:414',            what:'chmod 0o700 flagged permissive', verdict:'correct mode for executable script'},
+ {sev:'noise', loc:'tests/test_keeper_creds.py:228', what:'gitleaks ghp_ hit', verdict:'test fixture asserting secret scoping'},
+ {sev:'noise', loc:'docs/index.html',             what:'2x plaintext http link', verdict:'duplicates of low finding'},
+];
+const order = {crit:0, high:1, medium:2, low:3, info:4, noise:5};
+let key = 'sev', asc = true;
+function sortBy(k){ asc = (key===k) ? !asc : true; key = k; render(); }
+function render(){
+  const q = document.getElementById('q').value.toLowerCase();
+  const s = document.getElementById('sev').value;
+  const rows = ROWS.filter(r => (!s || r.sev===s) &&
+    (!q || (r.loc+r.what+r.verdict).toLowerCase().includes(q)))
+    .sort((a,b)=>((order[a[key]]??a[key])>(order[b[key]]??b[key])?1:-1)*(asc?1:-1));
+  document.getElementById('rows').innerHTML = rows.map(r =>
+    `<tr><td class="sev ${r.sev}">${r.sev}</td><td class="loc">${r.loc}</td><td>${r.what}</td><td>${r.verdict}</td></tr>`).join('');
+}
+function cp(btn){
+  navigator.clipboard.writeText(btn.parentElement.querySelector('pre').innerText);
+  btn.textContent = 'copied'; setTimeout(()=>btn.textContent='copy', 1200);
+}
+render();
+</script>
+</body>
+</html>

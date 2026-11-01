@@ -1,0 +1,23 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 228,
+  "EndLine": 228,
+  "StartColumn": 29,
+  "EndColumn": 55,
+  "Match": "GH_TOKEN': 'ghp_secret1234'",
+  "Secret": "ghp_secret1234",
+  "File": "tests/test_keeper_creds.py",
+  "SymlinkFile": "",
+  "Commit": "9bf3867078354106b0ae3e9dba481b3480c3b26b",
+  "Link": "https://github.com/jalemieux/bot_board/blob/9bf3867078354106b0ae3e9dba481b3480c3b26b/tests/test_keeper_creds.py#L228",
+  "Entropy": 3.6644979,
+  "Author": "curunir",
+  "Email": "curunir@bot",
+  "Date": "2026-10-15T03:03:11Z",
+  "Message": "Fleet secrets live on the board: admins set them on /fleet, keepers write fleet.env\n\nAn admin sets GH_TOKEN (and other *_TOKEN/_KEY/_SECRET) under Secrets on /fleet.\nEach keeper report returns the secrets' version; on a change the keeper fetches\nthe values (keepers that report a box only) and writes fleet.env, mode 600.\nbin/bot re-reads fleet.env before every harness run, so a rotated or removed\ntoken takes effect on the next run without restarts. Replaces #85's ssh copy\n(KEEPER_FLEET_ENV); a hand-kept fleet.env is left alone while the board has none.\n\nCo-Authored-By: Claude Opus 5.5 \u003cnoreply@anthropic.com\u003e",
+  "Tags": [],
+  "Fingerprint": "9bf3867078354106b0ae3e9dba481b3480c3b26b:tests/test_keeper_creds.py:generic-api-key:228"
+ }
+]
