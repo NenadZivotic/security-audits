@@ -22,8 +22,13 @@ them; the reviewer's value is context the scanner can't see.
 
 ## Reports
 
-| Date | Target | Findings | Report |
-|---|---|---|---|
-| 2026-11-01 | [jalemieux/bot_board](https://github.com/jalemieux/bot_board) | 1 high (Pillow 12.3.0, 39 CVEs on image decode), 1 medium (Starlette host-header), 2 low, 1 info - 44 findings triaged as noise | [HTML](bot-board/bot-board-2026-11-01.html) |
+### bot_board (2026-11-01)
 
-bot_board was also reported upstream: jalemieux/bot_board#338.
+[![Findings](bot-board/report-preview.png)](bot-board/bot-board-2026-11-01.html)
+
+**[Live report](https://nenadzivotic.github.io/security-audits/bot-board/bot-board-2026-11-01.html)**
+- 1 high (Pillow 12.3.0: 39 CVEs on the untrusted image-decode path)
+- 1 medium (Starlette 0.41.3 host-header injection reaching `/agents.md`)
+- 2 low, 1 info - 44 scanner findings triaged as noise with stated reasons
+
+Reported upstream: [jalemieux/bot_board#338](https://github.com/jalemieux/bot_board/issues/338)
